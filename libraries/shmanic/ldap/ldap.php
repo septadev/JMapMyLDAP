@@ -181,8 +181,6 @@ class SHLdap
 	 *
 	 * @var    string
 	 * @since  1.0
-	 *
-	 * @deprecated  [2.1] Use SHLdap::userParams
 	 */
 	protected $ldap_fullname = null;
 
@@ -191,8 +189,6 @@ class SHLdap
 	 *
 	 * @var    string
 	 * @since  1.0
-	 *
-	 * @deprecated  [2.1] Use SHLdap::userParams
 	 */
 	protected $ldap_email = null;
 
@@ -201,8 +197,6 @@ class SHLdap
 	 *
 	 * @var    string
 	 * @since  1.0
-	 *
-	 * @deprecated  [2.1] Use SHLdap::userParams
 	 */
 	protected $ldap_uid = null;
 
@@ -227,8 +221,6 @@ class SHLdap
 	 *
 	 * @var    string
 	 * @since  1.0
-	 *
-	 * @deprecated  [2.1] Use SHLdap::userParams
 	 */
 	protected $user_qry = null;
 
@@ -237,8 +229,6 @@ class SHLdap
 	 *
 	 * @var    string
 	 * @since  2.0
-	 *
-	 * @deprecated  [2.1] Use SHUserAdaptersLdap::getId instead
 	 */
 	protected $last_user_dn = null;
 
@@ -247,8 +237,6 @@ class SHLdap
 	 *
 	 * @var    string
 	 * @since  2.0
-	 *
-	 * @deprecated  [2.1] Use SHLdap::userParams
 	 */
 	protected $all_user_filter = '(objectclass=user)';
 
@@ -257,8 +245,6 @@ class SHLdap
 	 *
 	 * @var    string
 	 * @since  2.0
-	 *
-	 * @deprecated  [2.1] Use SHLdap::userParams
 	 */
 	protected $ldap_password = null;
 
@@ -267,8 +253,6 @@ class SHLdap
 	 *
 	 * @var    string
 	 * @since  2.0
-	 *
-	 * @deprecated  [2.1] Use SHLdap::userParams
 	 */
 	protected $password_hash = null;
 
@@ -277,8 +261,6 @@ class SHLdap
 	 *
 	 * @var    string
 	 * @since  2.0
-	 *
-	 * @deprecated  [2.1] Use SHLdap::userParams
 	 */
 	protected $password_salt = null;
 
@@ -287,8 +269,6 @@ class SHLdap
 	 *
 	 * @var    boolean
 	 * @since  2.0
-	 *
-	 * @deprecated  [2.1] Use SHLdap::userParams
 	 */
 	protected $password_prefix = false;
 
@@ -331,8 +311,6 @@ class SHLdap
 	 * @since   2.0
 	 * @throws  InvalidArgumentException  Invalid configurations
 	 * @throws  SHExceptionStacked        User or configuration issues (may not be important)
-	 *
-	 * @deprecated  [2.1] Use SHFactory::getLdapClient instead.
 	 */
 	public static function getInstance($id = null, array $authorised = array(), JRegistry $registry = null)
 	{
@@ -340,9 +318,9 @@ class SHLdap
 		$registry = is_null($registry) ? SHFactory::getConfig() : $registry;
 
 		// Get the optional authentication/authorisation options
-		$authenticate = JArrayHelper::getValue($authorised, 'authenticate', self::AUTH_NONE);
-		$username = JArrayHelper::getValue($authorised, 'username', null);
-		$password = JArrayHelper::getValue($authorised, 'password', null);
+		$authenticate = SHUtilArrayhelper::getValue($authorised, 'authenticate', self::AUTH_NONE);
+		$username = SHUtilArrayhelper::getValue($authorised, 'username', null);
+		$password = SHUtilArrayhelper::getValue($authorised, 'password', null);
 
 		// Get all the Ldap configs that are enabled and available
 		$configs = SHLdapHelper::getConfig($id, $registry);
@@ -475,12 +453,6 @@ class SHLdap
 				// Deprecated attribute for BC
 				return (preg_match('/(?<!\S)[\(]([\S]+)[\)](?!\S)/', $this->user_qry)) ? true : false;
 				break;
-
-			case 'groupParams':
-				return isset($this->extras['group_params']) ? json_decode($this->extras['group_params']) : array();
-
-			case 'userParams':
-				return isset($this->extras['user_params']) ? json_decode($this->extras['user_params']) : array();
 		}
 
 		return null;
@@ -584,8 +556,6 @@ class SHLdap
 	 * @throws  Exception               Configuration error
 	 * @throws  SHLdapException         Ldap specific error
 	 * @throws  SHExceptionInvaliduser  User invalid error
-	 *
-	 * @deprecated  [2.1] Use SHUserAdaptersLdap::getId instead.
 	 */
 	public function authenticate($authenticate = self::AUTH_NONE, $username = null, $password = null)
 	{
@@ -686,7 +656,7 @@ class SHLdap
 		// Attempt to configure Start TLS
 		if ($this->negotiate_tls)
 		{
-			if (!@ldap_start_tls($this->resource))
+			if (!ldap_start_tls($this->resource))
 			{
 				// Failed to start TLS
 				throw new SHLdapException($this->getErrorCode(), 10005, JText::_('LIB_SHLDAP_ERR_10005'));
@@ -728,13 +698,12 @@ class SHLdap
 		{
 			// Close the current connection to Ldap and reset the resource variable
 			ldap_close($this->resource);
+			$this->resource = null;
 			$this->addDebug('Closed connection.');
 		}
 
 		// Default the bind level to none
 		$this->bind_status = self::AUTH_NONE;
-
-		$this->resource = null;
 	}
 
 	/**
@@ -796,7 +765,7 @@ class SHLdap
 			// Successfully binded so set the level
 			$this->bind_status = self::AUTH_PROXY;
 			unset($password);
-
+            
 			return true;
 		}
 
@@ -822,7 +791,7 @@ class SHLdap
 	{
 		// Default the bind level to none
 		$this->bind_status = self::AUTH_NONE;
-
+        
 		// Check if this is an anonymous bind attempt
 		if (empty($username) || empty($password))
 		{
@@ -837,7 +806,22 @@ class SHLdap
 			// Anonymous bind allowed
 			$this->addDebug("Anonymous bind attempted {$username}");
 		}
+        
+        define(LDAP_OPT_DIAGNOSTIC_MESSAGE, 0x0032);
+        @ldap_bind($this->resource, $username, $password);
+        ldap_get_option($this->resource, LDAP_OPT_DIAGNOSTIC_MESSAGE, $extended_error);
+        $error_codes = explode(",", $extended_error);
+        $error_code = trim($error_codes[2]); 
 
+        error_log($extended_error, 3, "/tmp/debug-ldap.log");
+        
+        //If user requires password reset let proxy login
+        if($error_code == "data 773")
+        {
+            $username = $this->proxy_username; 
+            $password = $this->proxy_password;  
+        }
+        
 		if (@ldap_bind($this->resource, $username, $password))
 		{
 			// Successfully binded so set the level
@@ -845,7 +829,7 @@ class SHLdap
 
 			return true;
 		}
-
+        
 		// Unsuccessful bind
 		$this->addDebug("Unsuccessful bind for {$username}");
 
@@ -941,6 +925,7 @@ class SHLdap
 	 */
 	public function read($dn, $filter = null, $attributes = array())
 	{
+        
 		$this->operationAllowed();
 
 		if (is_null($filter))
@@ -951,11 +936,11 @@ class SHLdap
 
 		// Execute the Ldap read operation
 		$result = @ldap_read($this->resource, $dn, $filter, $attributes, 0, self::SIZE_LIMIT, self::TIME_LIMIT);
-
+        
 		if ($result === false)
 		{
-			// An Ldap error has occurred
-			throw new SHLdapException($this->getErrorCode(), 10112, JText::_('LIB_SHLDAP_ERR_10112'));
+            // An Ldap error has occurred
+            throw new SHLdapException($this->getErrorCode(), 10112, JText::_('LIB_SHLDAP_ERR_10112'));   
 		}
 
 		// Some results were found, lets import the results
@@ -1122,21 +1107,68 @@ class SHLdap
 	 * @throws  SHLdapException   The Ldap operation failed.
 	 * @throws  RuntimeException  Ldap either not binded or connected.
 	 */
-	public function replaceAttributes($dn, $attributes)
-	{
-		$this->operationAllowed();
 
-		// Do the Ldap modify replace operation
-		$result = @ldap_mod_replace($this->resource, $dn, $attributes);
+    public function replaceAttributes($dn, $attributes)
+    {
+        $this->operationAllowed();
 
-		if ($result === false)
-		{
-			// Ldap modify replace operation failed
-			throw new SHLdapException($this->getErrorCode(), 10151, JText::_('LIB_SHLDAP_ERR_10151'));
-		}
+        // Do the Ldap modify replace operation
+        $result = @ldap_mod_replace($this->resource, $dn, $attributes);
 
-		return $result;
-	}
+        if ($result === false)
+        {
+            // Ldap modify replace operation failed
+            throw new SHLdapException($this->getErrorCode(), 10151, JText::_('LIB_SHLDAP_ERR_10151'));
+        }
+
+        return $result;
+    }
+
+    /**
+     * Replaces ActiveDirectory password (unicodePwd) attribute from a specified distinguished name.
+     *
+     * @param   string  $dn          The distinguished name which contains the attributes to replace
+     * @param   array   $attributes  An array of attribute values to replace
+     *
+     * @return  boolean  True on success.
+     *
+     * @since   2.0
+     * @throws  SHLdapException   The Ldap operation failed.
+     * @throws  RuntimeException  Ldap either not binded or connected.
+     */
+
+    public function replacePasswordAttribute($dn, $attributes)
+    {
+        $this->operationAllowed();
+
+        $oldpw = mb_convert_encoding('"' . $attributes['oldpwd'] . '"', 'UTF-16LE', 'UTF-8');
+        $newpw = $attributes['unicodePwd'];
+
+        $attributes = [
+            [
+                "attrib"  => "unicodePwd",
+                "modtype" => LDAP_MODIFY_BATCH_REMOVE,
+                "values"  => [$oldpw],
+            ],
+            [
+                "attrib"  => "unicodePwd",
+                "modtype" => LDAP_MODIFY_BATCH_ADD,
+                "values"  => [$newpw],
+            ]
+        ];
+
+        // Do the Ldap modify replace operation
+        $result = @ldap_modify_batch($this->resource, $dn, $attributes);
+
+        if ($result === false)
+        {
+            // Ldap modify replace operation failed
+            throw new SHLdapException($this->getErrorCode(), 10151, JText::_('LIB_SHLDAP_ERR_10151'));
+        }
+
+        return $result;
+    }
+
 
 	/**
 	 * Add a new entry in the LDAP directory.
@@ -1237,8 +1269,6 @@ class SHLdap
 	 * @throws  InvalidArgumentException  Invalid argument in config related error
 	 * @throws  SHLdapException           Ldap specific error.
 	 * @throws  SHExceptionInvaliduser    User invalid error.
-	 *
-	 * @deprecated  [2.1] Use SHUserAdaptersLdap::getId instead.
 	 */
 	public function getUserDn($username = null, $password = null, $authenticate = false)
 	{
@@ -1254,6 +1284,7 @@ class SHLdap
 		 * A basic detection check for LDAP filter.
 		 * (i.e. distinguished names do not start and end with brackets).
 		 */
+        
 		$useSearch = (preg_match('/(?<!\S)[\(]([\S]+)[\)](?!\S)/', $this->user_qry)) ? true : false;
 
 		$this->addDebug(
@@ -1383,8 +1414,6 @@ class SHLdap
 	 * @since   1.0
 	 * @throws  InvalidArgumentException  Invalid argument in config related error
 	 * @throws  SHLdapException           Ldap search error
-	 *
-	 * @deprecated  [2.1] Use SHUserAdaptersLdap::getId instead.
 	 */
 	public function getUserDnBySearch($username)
 	{
@@ -1406,8 +1435,35 @@ class SHLdap
 		}
 
 		// Search the directory for the user
-		$result = $this->search(null, $search, array($this->ldap_uid));
+        $result = $this->search(null, $search, array($this->ldap_uid));
+        
+		$result_details = $this->search(null, $search, array());
+        $reset = $result_details->getAttribute(0, "pwdLastSet");
+        
+        //If time set to zero password needs to be reset.
+        if($reset[0] == 0)
+        {
+            $db = JFactory::getDbo();
 
+            $query = $db->getQuery(true);
+
+            // Fields to update.
+            $fields = array(
+                $db->quoteName('requireReset') . ' = 1'
+            );
+
+            // Conditions for which records should be updated.
+            $conditions = array(
+                $db->quoteName('name') . ' = ' . $username, 
+            );
+
+            $query->update($db->quoteName('#__users'))->set($fields)->where($conditions);
+
+            $db->setQuery($query);
+
+            $exec = $db->execute();
+        }
+        
 		$return 	= array();
 		$count 		= $result->countEntries();
 
@@ -1416,7 +1472,7 @@ class SHLdap
 		{
 			$return[] = $result->getValue($i, 'dn', 0);
 		}
-
+        
 		return $return;
 	}
 
@@ -1430,8 +1486,6 @@ class SHLdap
 	 *
 	 * @since   1.0
 	 * @throws  InvalidArgumentException  Invalid argument in config related error
-	 *
-	 * @deprecated  [2.1] Use SHUserAdaptersLdap::getId instead.
 	 */
 	public function getUserDnDirectly($username)
 	{
@@ -1522,19 +1576,6 @@ class SHLdap
 	public static function fullDebug()
 	{
 		ldap_set_option(null, LDAP_OPT_DEBUG_LEVEL, 7);
-	}
-
-	/**
-	 * Executed on deserialization to reset class.
-	 *
-	 * @return  void
-	 *
-	 * @since   2.1
-	 */
-	public function __wakeup()
-	{
-		// Reset various variables and allow a fresh start
-		$this->close();
 	}
 
 	/**
